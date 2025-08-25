@@ -1,23 +1,20 @@
-const File = require('../models/fileModel')
+const { sendmail } = require('../services/email')
 const cloudinary = require('cloudinary').v2
+const File = require('../models/fileModel')
 
 
 function isFileType(type , supportedType){
     return supportedType.includes(type)
 }
 
-const uploadFileToCloudinary = async (file , folder , quality) => {
+const uploadFileToCloudinary = async (file , folder ) => {
     const options = {folder}
-    options.resource_type = 'auto'
-    if(quality){
-        options.quality = quality
-    }
     return await cloudinary.uploader.upload(file.tempFilePath , options)
 }
 
 
 
-exports.imageUpload = async (req , res) => {
+exports.fileUpload = async (req , res) => {
     try{
         const{name  , email} = req.body
         console.log(name , email)
@@ -36,12 +33,15 @@ exports.imageUpload = async (req , res) => {
         }
          
         const response = await uploadFileToCloudinary(file , "FileLB" );
-        console.log(response)
-        const fileData = await File.create({name , email , imageUrl:response.secure_url})
+        console.log("Res" , response)
+
+        const fileData = await File.create({name , email , fileUrl:response.secure_url})
+        sendmail(fileData , response.secure_url)
+        console.log(response.secure_url)
         res.json({
             success : true,
             fileData,
-            imageUrl : response.secure_url,
+            fileUrl : response.secure_url,
             message : "File Uploaded Successfully"
         })
     }
