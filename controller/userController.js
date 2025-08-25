@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const User = require('../models/user');
+const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -7,6 +7,12 @@ require('dotenv').config();
 exports.signUp = async (req , res) => {
     try{
         const{name , email , password } = req.body;
+
+        if(!name || !email || !password){
+            return res.status(403).json({
+                message : 'All Fields are requried'
+            })
+        }
         
         const existingUser = await User.findOne({email})
         if(existingUser){
@@ -30,4 +36,53 @@ exports.signUp = async (req , res) => {
         message : err.message
        })
     }
+}
+
+exports.login = async (req , res) => {
+    try{
+        const{email , password} = req.body;
+
+    if(!email || !password){
+            return res.status(403).json({
+                message : 'All Fields are requried'
+            })
+    }
+
+      const user = await User.findOne({email})
+        if(!user){
+            return res.status(409).json({
+                success : false,
+                message : "Email is Not Registered"
+            })
+        }
+
+        const isMatched = await bcrypt.compare(password , user.password)
+        if(!isMatched){
+            return res.status(401).json({
+                message : 'Incorrect Password'
+            })
+        }
+
+        const payload ={
+            name :user.name,
+            email :user.email
+        }
+        const token = jwt.sign(payload , process.env.Secret , {expiresIn : '15h'})
+
+        res.status(200).json({
+            success : true,
+            message : "User is Logged INN ",
+            token
+        })
+        
+
+    }
+    catch(err){
+        return res.status(500).json({
+            success : false,
+            message : err.message
+        })
+    }
+
+
 }
