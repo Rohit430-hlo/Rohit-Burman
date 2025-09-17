@@ -8,10 +8,10 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-exports.sendmail = async (user ) => {
+exports.sendmail = async (user , downloadLink ) => {
   const info = await transporter.sendMail({
     from: "Rohit Burman",
-    to: "bar@example.com, baz@example.com",
+    to: user.email,
     subject: `Hello ${user.name}`,
     text: "Hello world?", 
     html: `<b>DownLoad Link is ${downloadLink}</b>`, 

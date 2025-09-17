@@ -1,54 +1,76 @@
-const { sendmail } = require('../services/email')
-const cloudinary = require('cloudinary').v2
-const File = require('../models/fileModel')
+const File = require('../models/fileModel');
+const User = require('../models/userModel');
+const { sendmail } = require('../services/email');
+const cloudinary = require('cloudinary').v2;
 
-
-function isFileType(type , supportedType){
-    return supportedType.includes(type)
+function isFileType(supportedType, fileType) {
+    return supportedType.includes(fileType);
 }
 
-const uploadFileToCloudinary = async (file , folder ) => {
-    const options = {folder}
-    return await cloudinary.uploader.upload(file.tempFilePath , options)
-}
+const uploadfile = async (file, folder) => {
+    const options = { folder };
+    options.resource_type = "auto";
+    return await cloudinary.uploader.upload(file.tempFilePath, options);
+};
 
+exports.fileUpload = async (req, res) => {
+    try {
+        // get userId from body (ya token se nikal sakte ho)
+        const userId = req.user.id;  
 
-
-exports.fileUpload = async (req , res) => {
-    try{
-        const{name  , email} = req.body
-        console.log(name , email)
-        const file  = req.files.file
-
-        const supportedType = ["png" , "jpg" , "jpeg"]
-        const fileType = file.name.split('.')[1].toLowerCase()
-        console.log("My file type : " ,fileType)
-
-
-        if(!isFileType(fileType , supportedType)){
-            return res.status(400).json({
-                success : false,
-                message : "File Format is not supported"
-            })
+        if (!req.files || !req.files.file) {
+            return res.status(400).json({ message: "No file uploaded" });
         }
-         
-        const response = await uploadFileToCloudinary(file , "FileLB" );
-        console.log("Res" , response)
 
-        const fileData = await File.create({name , email , fileUrl:response.secure_url})
-        sendmail(fileData , response.secure_url)
-        console.log(response.secure_url)
-        res.json({
-            success : true,
-            fileData,
-            fileUrl : response.secure_url,
-            message : "File Uploaded Successfully"
-        })
+        const file = req.files.file;
+        console.log("File : ", file);
+
+        const supportedType = ['jpg', 'png'];
+        const fileType = file.name.split('.').pop().toLowerCase();
+
+        if (!isFileType(supportedType, fileType)) {
+            return res.status(400).json({
+                message: "File type is not supported",
+            });
+        }
+
+        // Upload to cloudinary
+        const response = await uploadfile(file, 'FileLB');
+        console.log("Response : ", response);
+
+        // Save file in DB
+        const filedata = await File.create({
+            fileURL: response.secure_url,
+            public_id: response.public_id,
+            fileType: fileType,
+            size: file.size
+        });
+
+        console.log("File Data:", filedata);
+
+        // Add file _id into User model
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $push: { files: filedata._id } },  // agar multiple files allowed hain
+            { new: true }
+        );
+
+        const downloadLink = response.secure_url.replace('/upload/', '/upload/fl_attachment/');
+        console.log("Download Link:", downloadLink);
+        await sendmail(updatedUser , downloadLink)
+
+
+        res.status(200).json({
+            success: true,
+            message: "Your file is uploaded successfully",
+            file: filedata,
+            user: updatedUser
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            message: err.message,
+        });
     }
-    catch(err){
-        res.status(500).json({
-            success : false,
-            message : err.message
-        })
-    }
-}
+};

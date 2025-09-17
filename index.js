@@ -12,11 +12,14 @@ app.get('/' ,(req , res)=>{
     res.send("Hello")
 })
 
-console.log("dgfh",process.env.API_SCERET)
-const fileUpload = require("express-fileupload");
-app.use(fileUpload({ useTempFiles: true , tempFileDir : '/tmp/' }));
+const fileUpload = require('express-fileupload')
 
-const cloudinary = require('./config/Coludinary')
+app.use(fileUpload({
+    useTempFiles : true,
+    tempFileDir : '/tmp/'
+}));
+
+const cloudinary = require('./config/cloudinary')
 cloudinary.cloudinaryConnect()
 
 app.use('/' , router)

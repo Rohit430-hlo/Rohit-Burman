@@ -14,6 +14,7 @@ router.get('/test' , auth , (req , res)=>{
     })
 })
 
-router.post('/upload' , fileUpload)
+router.post('/upload',auth , fileUpload)
+
 
 module.exports = router

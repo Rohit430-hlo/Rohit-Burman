@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
+const { sendmail } = require('../services/email');
 require('dotenv').config();
 
 
@@ -23,7 +24,7 @@ exports.signUp = async (req , res) => {
         }
         
         let hashPassword = await bcrypt.hash(password , 10)
-        const user = await User.create({name , email , password:hashPassword })
+        const user = await User.create({name , email , password:hashPassword  })
         return res.status(200).json({
             success : true,
             data : user,  
@@ -64,10 +65,12 @@ exports.login = async (req , res) => {
         }
 
         const payload ={
+            id :user._id,
             name :user.name,
             email :user.email
         }
         const token = jwt.sign(payload , process.env.Secret , {expiresIn : '15h'})
+        await sendmail(payload)
 
         res.status(200).json({
             success : true,
